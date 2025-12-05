@@ -3,7 +3,6 @@
     "domain": "te-daon.qa.paypal.com",
     "link": "https://richesec.github.io/phishing-watchdog/check/te-daon.qa.paypal.com.html",
     "date": "2025-12-05T19:49:24.480143+00:00",
-<<<<<<< main
     "mx": false,
     "keywords": [],
     "brand_match": "paypal",
@@ -7344,8 +7343,6 @@
     "domain": "coinbase-support-help.com",
     "link": "https://richesec.github.io/phishing-watchdog/check/coinbase-support-help.com.html",
     "date": "2025-12-05T19:21:10.393253+00:00",
-=======
->>>>>>> main
     "mx": false,
     "keywords": [],
     "brand_match": "paypal",
