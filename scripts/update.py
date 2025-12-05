@@ -74,37 +74,40 @@ CHECK_DIR = "check"
 # =============================================================================
 
 def get_recent_domains():
-    """Fetch domains from crt.sh CT log by querying specific keywords."""
+    """Fetch domains from CT logs. Uses crt.sh with certspotter as fallback."""
     now = datetime.now(timezone.utc)
-    past = now - timedelta(hours=6)
+    past = now - timedelta(hours=12)  # Extended to 12 hours for better coverage
     
-    # Query terms - subset of keywords that are most indicative of phishing
-    QUERY_TERMS = [
-        "login", "signin", "secure", "verify", "account",
-        "paypal", "amazon", "apple", "google", "microsoft",
-        "bank", "wallet", "crypto", "support", "password"
-    ]
+    # Reduced query terms - fewer but more targeted queries
+    QUERY_TERMS = ["login", "paypal", "secure", "wallet", "verify"]
     
     all_domains = set()
+    
+    # Try crt.sh first
+    print("[*] Attempting crt.sh API...")
+    crt_success = False
     
     for term in QUERY_TERMS:
         print(f"[*] Querying crt.sh for '%{term}%'...")
         
         # Retry logic with exponential backoff
-        max_retries = 3
+        max_retries = 2
         for attempt in range(max_retries):
             try:
-                # Query crt.sh for domains containing the term
                 url = f"https://crt.sh/?q=%25{term}%25&output=json"
-                r = requests.get(url, timeout=60, headers={
-                    'User-Agent': 'Mozilla/5.0 (compatible; PhishingWatchdog/1.0)'
+                r = requests.get(url, timeout=90, headers={
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                 })
                 
-                if r.status_code == 502 or r.status_code == 503:
-                    wait_time = (attempt + 1) * 5  # 5s, 10s, 15s
-                    print(f"    [!] Status {r.status_code}, retry {attempt+1}/{max_retries} in {wait_time}s...")
-                    time.sleep(wait_time)
-                    continue
+                if r.status_code in [502, 503, 504]:
+                    if attempt < max_retries - 1:
+                        wait_time = (attempt + 1) * 10
+                        print(f"    [!] Status {r.status_code}, retry in {wait_time}s...")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        print(f"    [!] Status {r.status_code}, skipping")
+                        break
                     
                 if r.status_code != 200:
                     print(f"    [!] Status {r.status_code}, skipping")
@@ -113,13 +116,11 @@ def get_recent_domains():
                 try:
                     results = r.json()
                 except:
-                    print(f"    [!] Invalid JSON response, skipping")
+                    print(f"    [!] Invalid JSON, skipping")
                     break
                 
-                # Filter by date
                 count = 0
-                for c in results:
-                    # Check if cert was issued recently
+                for c in results[:500]:  # Limit results per query
                     not_before = c.get("not_before", "")
                     if not_before:
                         try:
@@ -130,7 +131,7 @@ def get_recent_domains():
                             pass
                     
                     name = c.get("common_name") or ""
-                    if name and "." in name:
+                    if name and "." in name and not name.startswith("*"):
                         all_domains.add(name.lower().strip())
                         count += 1
 
@@ -141,24 +142,43 @@ def get_recent_domains():
                             all_domains.add(d)
                             count += 1
                 
+                if count > 0:
+                    crt_success = True
                 print(f"    [+] Found {count} recent domains")
-                break  # Success, exit retry loop
+                break
                 
             except requests.exceptions.Timeout:
                 if attempt < max_retries - 1:
-                    wait_time = (attempt + 1) * 5
-                    print(f"    [!] Timeout, retry {attempt+1}/{max_retries} in {wait_time}s...")
-                    time.sleep(wait_time)
+                    print(f"    [!] Timeout, retrying...")
+                    time.sleep(10)
                 else:
-                    print(f"    [!] Timeout after {max_retries} attempts, skipping")
+                    print(f"    [!] Timeout, skipping")
             except Exception as e:
                 print(f"    [!] Error: {e}")
                 break
         
-        # Longer pause between queries to avoid rate limiting (3 seconds)
-        time.sleep(3)
+        # Longer delay between queries
+        time.sleep(5)
+    
+    # If crt.sh failed completely, try certspotter API
+    if not crt_success and len(all_domains) == 0:
+        print("\n[*] crt.sh unavailable, trying certspotter API...")
+        for term in ["paypal", "amazon", "google"]:
+            try:
+                url = f"https://api.certspotter.com/v1/issuances?domain={term}.com&include_subdomains=true&expand=dns_names"
+                r = requests.get(url, timeout=30)
+                if r.status_code == 200:
+                    results = r.json()
+                    for cert in results[:100]:
+                        for name in cert.get("dns_names", []):
+                            if not name.startswith("*"):
+                                all_domains.add(name.lower())
+                    print(f"    [+] Got {len(results)} certs from certspotter")
+                time.sleep(2)
+            except Exception as e:
+                print(f"    [!] Certspotter error: {e}")
 
-    print(f"[+] Total unique domains: {len(all_domains)}")
+    print(f"\n[+] Total unique domains: {len(all_domains)}")
     return list(all_domains)
 
 
