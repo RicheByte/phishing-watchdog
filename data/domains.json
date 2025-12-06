@@ -7475,5 +7475,16 @@
     "date": "2025-12-05T19:49:24.480143+00:00",
     "threat_score": 35,
     "threat_level": "MEDIUM"
+  },
+  {
+    "domain": "dg.video.google.com",
+    "mx": false,
+    "has_ip": true,
+    "keywords": [],
+    "brand_match": "google",
+    "brand_similarity": 1.0,
+    "date": "2025-12-06T06:19:37.620470+00:00",
+    "threat_score": 35,
+    "threat_level": "MEDIUM"
   }
 ]
