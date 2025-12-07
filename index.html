@@ -208,6 +208,18 @@
             color: var(--bg-primary);
         }
 
+        .btn-minimal {
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-minimal:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+        }
+
         /* Dashboard Grid */
         .dashboard {
             display: grid;
@@ -631,7 +643,7 @@
                 </div>
             </div>
             <div class="header-actions">
-                <a href="https://github.com/RicheByte" target="_blank" class="btn btn-outline">👤 richebyte</a>
+                <a href="https://github.com/RicheByte" target="_blank" class="btn btn-minimal">👤 richebyte</a>
                 <div class="status-badge">
                     <span class="status-dot"></span>
                     <span id="last-update">Loading...</span>
